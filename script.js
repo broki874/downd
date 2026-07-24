@@ -3,12 +3,12 @@ document.getElementById("downloadBtn").addEventListener("click", async () => {
   const status = document.getElementById("status");
   const resultDiv = document.getElementById("result");
 
-  if (!urlInput.includes("youtube.com/shorts")) {
-    status.textContent = "❌ Please enter a valid YouTube Shorts URL";
+  if (!urlInput) {
+    status.textContent = "❌ Please enter a URL";
     return;
   }
 
-  status.textContent = "🚀 Starting...";
+  status.textContent = "🚀 Processing...";
   resultDiv.innerHTML = "";
 
   try {
@@ -20,18 +20,22 @@ document.getElementById("downloadBtn").addEventListener("click", async () => {
 
     const result = await response.json();
 
-    if (result.success && result.data) {
+    if (result.success) {
+      const downloadUrl = result.downloadUrl || result.data?.downloadUrl || result.data?.directDownloadUrl || "#";
+
       status.textContent = "✅ Success!";
-      const dlUrl = result.data.downloadUrl || result.data.directDownloadUrl || "#";
       resultDiv.innerHTML = `
-        <p><strong>${result.data.title || "YouTube Short"}</strong></p>
-        <a href="${dlUrl}" target="_blank" download>⬇️ Download Video</a>
+        <p><strong>YouTube Short</strong></p>
+        ${downloadUrl !== "#" ? 
+          `<a href="${downloadUrl}" target="_blank" download class="download-btn">⬇️ Download Video</a>` : 
+          `<p style="color:orange;">No direct download link found. Try another Short.</p>`
+        }
       `;
     } else {
-      status.textContent = "❌ " + (result.error || "Something went wrong");
+      status.textContent = "❌ " + (result.error || "Unknown error");
     }
   } catch (err) {
-    status.textContent = "❌ Network error. Try again.";
+    status.textContent = "❌ Network error";
     console.error(err);
   }
 });
