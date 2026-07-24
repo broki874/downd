@@ -1,23 +1,30 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>YouTube Shorts Downloader</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shorts Downloader</title>
+  <style>
+    body { font-family: Arial; background: #0f0c29; color: white; text-align: center; padding: 50px; }
+    input { width: 70%; padding: 15px; font-size: 1.1rem; margin: 20px; border-radius: 8px; }
+    button { padding: 15px 40px; font-size: 1.2rem; background: #ff0000; color: white; border: none; border-radius: 8px; }
+  </style>
 </head>
 <body>
-  <div class="container">
-    <h1>🎥 YouTube Shorts Downloader</h1>
-    <p>Paste a Shorts URL and download instantly</p>
+  <h1>🎥 YouTube Shorts Downloader</h1>
+  <input type="text" id="url" placeholder="https://www.youtube.com/shorts/..." />
+  <br><br>
+  <button onclick="downloadVideo()">Download</button>
+  <p id="status"></p>
 
-    <input type="text" id="urlInput" placeholder="https://www.youtube.com/shorts/..." />
-    <button id="downloadBtn">Download Short</button>
+  <script>
+    async function downloadVideo() {
+      const url = document.getElementById('url').value;
+      const status = document.getElementById('status');
+      status.textContent = "Downloading...";
 
-    <div id="status"></div>
-    <div id="result"></div>
-  </div>
-
-  <script src="script.js"></script>
+      window.location.href = `/api/download?url=${encodeURIComponent(url)}`;
+    }
+  </script>
 </body>
 </html>
