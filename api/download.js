@@ -9,47 +9,48 @@ export default async function handler(req, res) {
   if (!API_TOKEN) return res.status(500).json({ error: "Missing APIFY_TOKEN" });
 
   try {
-    // Using a reliable YouTube Video Downloader that supports Shorts
     const startRes = await fetch(`https://api.apify.com/v2/acts/streamers~youtube-video-downloader/runs?token=${API_TOKEN}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        videos: [{ url: url }]
-      })
+      body: JSON.stringify({ videos: [{ url }] })
     });
 
     const startData = await startRes.json();
+    const runId = startData.data?.id;
 
-    if (!startData.data?.id) {
-      return res.status(500).json({ 
-        error: "Failed to start Apify run", 
-        details: startData 
-      });
+    if (!runId) {
+      return res.status(500).json({ error: "Failed to start run", details: startData });
     }
 
-    const runId = startData.data.id;
-
-    // Polling
-    for (let i = 0; i < 20; i++) {
+    let items = [];
+    for (let i = 0; i < 18; i++) {
       await new Promise(r => setTimeout(r, 4000));
 
       const statusRes = await fetch(`https://api.apify.com/v2/acts/streamers~youtube-video-downloader/runs/${runId}?token=${API_TOKEN}`);
       const statusData = await statusRes.json();
-      const status = statusData.data?.status;
 
-      if (status === "SUCCEEDED") {
+      if (statusData.data?.status === "SUCCEEDED") {
         const itemsRes = await fetch(`https://api.apify.com/v2/acts/streamers~youtube-video-downloader/runs/${runId}/dataset/items?token=${API_TOKEN}`);
-        const items = await itemsRes.json();
-
-        return res.json({ success: true, data: items[0] || items });
-      }
-
-      if (status === "FAILED" || status === "ABORTED") {
-        return res.status(500).json({ error: `Run failed: ${status}` });
+        items = await itemsRes.json();
+        break;
       }
     }
 
-    return res.status(408).json({ error: "Timeout" });
+    const videoData = items[0] || {};
+    
+    // Try multiple possible download URL fields
+    const downloadUrl = videoData.downloadUrl || 
+                       videoData.directDownloadUrl || 
+                       videoData.url || 
+                       videoData.videoUrl;
+
+    return res.json({ 
+      success: true, 
+      data: videoData,
+      downloadUrl: downloadUrl,
+      allKeys: Object.keys(videoData)  // for debugging
+    });
+
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }
