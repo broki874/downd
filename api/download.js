@@ -1,51 +1,24 @@
-export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+const ytdl = require('ytdl-core');
 
-  const { url } = req.body;
-  const API_TOKEN = process.env.APIFY_TOKEN;
+module.exports = async (req, res) => {
+  const { url } = req.query;
 
-  if (!API_TOKEN) return res.status(500).json({ error: "APIFY_TOKEN missing" });
+  if (!url || !ytdl.validateURL(url)) {
+    return res.status(400).json({ error: "Invalid YouTube URL" });
+  }
 
   try {
-    const startRes = await fetch(`https://api.apify.com/v2/acts/streamers~youtube-video-downloader/runs?token=${API_TOKEN}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        videos: [{ url }],
-        quality: "720"   // Try to force download
-      })
+    const info = await ytdl.getInfo(url);
+    const format = ytdl.chooseFormat(info.formats, { 
+      quality: 'highest', 
+      filter: format => format.container === 'mp4' 
     });
 
-    const startData = await startRes.json();
-    const runId = startData.data?.id;
+    res.setHeader('Content-Disposition', `attachment; filename="${info.videoDetails.title}.mp4"`);
+    res.setHeader('Content-Type', 'video/mp4');
 
-    if (!runId) return res.status(500).json({ error: "Failed to start", details: startData });
-
-    let items = [];
-    for (let i = 0; i < 20; i++) {
-      await new Promise(r => setTimeout(r, 5000));
-
-      const statusRes = await fetch(`https://api.apify.com/v2/acts/streamers~youtube-video-downloader/runs/${runId}?token=${API_TOKEN}`);
-      const status = (await statusRes.json()).data?.status;
-
-      if (status === "SUCCEEDED") {
-        const itemsRes = await fetch(`https://api.apify.com/v2/acts/streamers~youtube-video-downloader/runs/${runId}/dataset/items?token=${API_TOKEN}`);
-        items = await itemsRes.json();
-        break;
-      }
-    }
-
-    const video = items[0] || {};
-    const downloadUrl = video.downloadUrl || video.directDownloadUrl || video.highestQualityUrl || video.url;
-
-    return res.json({
-      success: true,
-      downloadUrl,
-      title: video.title || "YouTube Short",
-      raw: video
-    });
-
+    ytdl(url, { format }).pipe(res);
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error.message });
   }
-}
+};
