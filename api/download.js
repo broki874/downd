@@ -4,11 +4,15 @@ export default async function handler(req, res) {
   }
 
   const { url } = req.body;
-  const API_TOKEN = "apify_api_LRRJCsTnevcCF1n774YJprY2ZzD8dg3AUFWR";
+  const API_TOKEN = process.env.APIFY_TOKEN;   // ← Changed
+
+  if (!API_TOKEN) {
+    return res.status(500).json({ error: "Missing APIFY_TOKEN environment variable" });
+  }
+
   const ACTOR = "easyapi/youtube-shorts-downloader";
 
   try {
-    // Start the run
     const startRes = await fetch(`https://api.apify.com/v2/acts/${ACTOR}/runs?token=${API_TOKEN}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -18,7 +22,6 @@ export default async function handler(req, res) {
     const startData = await startRes.json();
     const runId = startData.data.id;
 
-    // Poll for completion (max ~40 seconds)
     for (let i = 0; i < 12; i++) {
       await new Promise(r => setTimeout(r, 4000));
 
